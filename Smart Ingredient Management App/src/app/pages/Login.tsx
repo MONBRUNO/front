@@ -185,7 +185,7 @@ export default function Login() {
         <div className="space-y-3">
           <button
             onClick={() => handleSocialLogin('naver')}
-            className="w-full py-4 bg-[#03C75A] text-white rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-[#02b351] transition-colors"
+            className="w-full h-14 bg-[#03C75A] text-white rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-[#02b351] transition-colors"
           >
             <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
               <span className="text-[#03C75A] text-sm" style={{ fontWeight: 700 }}>N</span>
@@ -195,15 +195,15 @@ export default function Login() {
 
           <button
             onClick={() => handleSocialLogin('kakao')}
-            className="w-full py-4 bg-[#FEE500] text-black rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-[#fdd835] transition-colors"
+            className="w-full h-14 bg-[#FEE500] text-black rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-[#fdd835] transition-colors"
           >
-            <img src={kakaoSymbol} alt="" className="w-6 h-6" />
+            <img src={kakaoSymbol} alt="" className="w-10 h-10" />
             카카오로 시작하기
           </button>
 
           <button
             onClick={() => handleSocialLogin('google')}
-            className="w-full py-4 bg-card border-2 border-border text-foreground rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-secondary transition-colors"
+            className="w-full h-14 bg-card border-2 border-border text-foreground rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-secondary transition-colors"
           >
             <svg className="w-6 h-6" viewBox="0 0 24 24">
               <path
