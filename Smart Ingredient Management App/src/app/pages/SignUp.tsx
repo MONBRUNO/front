@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { Eye, EyeOff, ChevronLeft, Check } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiClient';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -116,7 +117,7 @@ export default function SignUp() {
       const birthDate = `${formData.birthYear}-${formData.birthMonth.padStart(2, '0')}-${formData.birthDay.padStart(2, '0')}`;
 
       // 회원가입 API 요청
-      const response = await fetch('http://localhost:8080/user/signup', {
+      const response = await fetch(`${API_BASE_URL}/user/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -223,7 +224,7 @@ export default function SignUp() {
     }
     setVerification(v => ({ ...v, sending: true, error: null }));
     try {
-      const res = await fetch('http://localhost:8080/user/email/send-code', {
+      const res = await fetch(`${API_BASE_URL}/user/email/send-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -243,7 +244,7 @@ export default function SignUp() {
     if (!verification.sentTo) return;
     setVerification(v => ({ ...v, verifying: true, error: null }));
     try {
-      const res = await fetch('http://localhost:8080/user/email/verify-code', {
+      const res = await fetch(`${API_BASE_URL}/user/email/verify-code`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: verification.sentTo, code: verification.code.trim() }),

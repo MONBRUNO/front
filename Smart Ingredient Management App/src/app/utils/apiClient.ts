@@ -12,7 +12,10 @@
 
 import { isGuest } from './guestMode';
 
-const API_BASE_URL = 'http://localhost:8080';
+// 백엔드 base URL. Vercel 등 배포 시 VITE_API_BASE_URL 환경변수로 주입.
+// 로컬 dev는 미설정 → localhost:8080 fallback.
+export const API_BASE_URL: string =
+  import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080';
 
 const AUTH_KEYS = ['authToken', 'refreshToken', 'isLoggedIn', 'userProfile'] as const;
 

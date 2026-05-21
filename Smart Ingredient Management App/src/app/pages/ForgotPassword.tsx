@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { ArrowLeft, Mail, CheckCircle2 } from 'lucide-react';
+import { API_BASE_URL } from '../utils/apiClient';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
@@ -19,7 +20,7 @@ export default function ForgotPassword() {
     setSubmitting(true);
     try {
       // 인증 불필요 — 미로그인 상태에서 호출.
-      const res = await fetch('http://localhost:8080/user/password/forgot', {
+      const res = await fetch(`${API_BASE_URL}/user/password/forgot`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim() }),

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router';
 import { Eye, EyeOff } from 'lucide-react';
-import { saveAuth } from '../utils/apiClient';
+import { API_BASE_URL, saveAuth } from '../utils/apiClient';
 import { setGuest, clearGuest } from '../utils/guestMode';
 import { promptAndMigrate } from '../utils/ingredientMigration';
 import kakaoSymbol from '../../assets/kakao_symbol.png';
@@ -21,7 +21,7 @@ export default function Login() {
 
   // ──────────────────────────────────────────────────────────────
   // [MSW 모킹 중] 이 handleSubmit 함수는 MSW가 가로채서 가짜 응답을 줍니다.
-  // 실제 fetch 코드('http://localhost:8080/user/login')는 그대로지만,
+  // 실제 fetch 코드(`${API_BASE_URL}/user/login`)는 그대로지만,
   // MSW가 중간에서 가상 계정(id: d23 / pwd: d3d3)을 확인하고 응답합니다.
   //
   // TODO: 백엔드 연동 완료 후 → 이 함수 내부 로직은 변경 불필요.
@@ -32,7 +32,7 @@ export default function Login() {
 
     try {
       // 이 fetch 요청은 MSW(개발 중) 또는 실제 백엔드(연동 후) 중 하나가 처리합니다.
-      const response = await fetch('http://localhost:8080/user/login', {
+      const response = await fetch(`${API_BASE_URL}/user/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -85,7 +85,7 @@ export default function Login() {
   const handleSocialLogin = (provider: 'kakao' | 'naver' | 'google') => {
     // 백엔드 OAuth 인증 엔드포인트로 이동
     // 백엔드에서 인증 처리 → JWT 발급 → /oauth/callback으로 redirect
-    window.location.href = `http://localhost:8080/oauth2/authorization/${provider}`;
+    window.location.href = `${API_BASE_URL}/oauth2/authorization/${provider}`;
   };
 
   const handleStartAsGuest = () => {
