@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { apiFetch } from '../utils/apiClient';
 import { useIngredients } from '../hooks/useIngredients';
 import { useRecipes } from '../hooks/useRecipes';
 import { matchRecipesWithIngredients } from '../utils/recipeMatch';
@@ -31,43 +32,91 @@ export default function MealPlan() {
     [recipes, ingredients]
   );
 
-  // 자동 식단 생성 — 끼니별 후보 풀에서 요일마다 다른 메뉴를 순환 선택해 중복을 최소화.
-  const mealPlan = useMemo(() => {
+  // AI 식단 — 백엔드 Gemini가 끼니 적합성·다양성을 고려해 7일치로 생성. 실패 시 규칙 기반 폴백.
+  const [aiPlan, setAiPlan] = useState<
+    { breakfast: string; lunch: string; dinner: string }[] | null
+  >(null);
+  const recipeNamesKey = recipes.map((r) => r.name).join('|');
+  useEffect(() => {
+    if (recipes.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/recipes/meal-plan', {
+          method: 'POST',
+          body: JSON.stringify({
+            recipes: recipes.map((r) => r.name),
+            ingredients: ingredients.map((i) => i.name),
+            days: 7,
+          }),
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        if (!cancelled && Array.isArray(data?.plan) && data.plan.length > 0) {
+          setAiPlan(data.plan);
+        }
+      } catch {
+        // 실패 — mealPlan이 규칙 기반으로 폴백
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipeNamesKey]);
+
+  // 이름 → 레시피 (영양 합산용)
+  const recipeByName = useMemo(() => {
+    const map: Record<string, typeof recipes[number]> = {};
+    for (const r of recipes) map[r.name] = r;
+    return map;
+  }, [recipes]);
+
+  // 식단 생성 — AI 식단 우선, 없으면(로딩 중·실패 시) 규칙 기반 순환으로 폴백.
+  const mealPlan = useMemo<MealPlanItem[]>(() => {
     if (recipes.length === 0) return [];
 
-    // 매칭률 높은 순 정렬 — 만들기 쉬운 레시피가 앞쪽에 오게.
+    const buildItem = (i: number, b: string, l: string, d: string): MealPlanItem => {
+      const cal = (n: string) => recipeByName[n]?.nutrition.calories ?? 0;
+      const pro = (n: string) => recipeByName[n]?.nutrition.protein ?? 0;
+      const car = (n: string) => recipeByName[n]?.nutrition.carbs ?? 0;
+      const fat = (n: string) => recipeByName[n]?.nutrition.fat ?? 0;
+      return {
+        day: daysOfWeek[i % 7],
+        breakfast: b, lunch: l, dinner: d,
+        totalCalories: cal(b) + cal(l) + cal(d),
+        totalProtein: pro(b) + pro(l) + pro(d),
+        totalCarbs: car(b) + car(l) + car(d),
+        totalFat: fat(b) + fat(l) + fat(d),
+      };
+    };
+
+    // AI 식단이 있으면 우선 사용
+    if (aiPlan && aiPlan.length > 0) {
+      return aiPlan
+        .slice(0, selectedDays)
+        .map((p, i) => buildItem(i, p.breakfast, p.lunch, p.dinner));
+    }
+
+    // 폴백: 규칙 기반 순환 (끼니별 후보 풀에서 요일마다 순환 선택)
     const sorted = [...matches].sort((a, b) => b.matchRate - a.matchRate);
     const allRecipes = sorted.map((m) => m.recipe);
     const inCats = (cats: string[]) =>
       sorted.filter((m) => cats.includes(m.recipe.category)).map((m) => m.recipe);
-
-    // 아침: 간식·음료(가벼운 끼니). 후보가 너무 적으면 전체로 폴백.
     let breakfastPool = inCats(['간식', '음료']);
     if (breakfastPool.length < 2) breakfastPool = allRecipes;
-    // 점심·저녁: 밥/면·반찬·기타·샐러드(제대로 된 끼니).
     let mealPool = inCats(['밥/면', '반찬', '기타', '샐러드']);
     if (mealPool.length < 4) mealPool = allRecipes;
 
     const plan: MealPlanItem[] = [];
     for (let i = 0; i < selectedDays; i++) {
-      const breakfast = breakfastPool[i % breakfastPool.length];
-      // 점심·저녁은 서로 다른 인덱스 — 같은 날 중복 방지 + 요일별 순환
-      const lunch = mealPool[(i * 2) % mealPool.length];
-      const dinner = mealPool[(i * 2 + 1) % mealPool.length];
-
-      plan.push({
-        day: daysOfWeek[i % 7],
-        breakfast: breakfast.name,
-        lunch: lunch.name,
-        dinner: dinner.name,
-        totalCalories: breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
-        totalProtein: breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
-        totalCarbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
-        totalFat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
-      });
+      plan.push(buildItem(
+        i,
+        breakfastPool[i % breakfastPool.length].name,
+        mealPool[(i * 2) % mealPool.length].name,
+        mealPool[(i * 2 + 1) % mealPool.length].name,
+      ));
     }
     return plan;
-  }, [matches, recipes, selectedDays]);
+  }, [aiPlan, matches, recipes, selectedDays, recipeByName]);
 
   const weeklyTotal = mealPlan.reduce(
     (acc, day) => ({
