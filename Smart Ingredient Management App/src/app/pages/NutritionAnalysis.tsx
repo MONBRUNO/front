@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useIngredients } from '../hooks/useIngredients';
 import { Link } from 'react-router';
 import { ChevronLeft, Sparkles, TrendingUp, AlertCircle, Search, Camera } from 'lucide-react';
@@ -84,6 +84,12 @@ const nutritionDatabase: Record<string, {
 export default function NutritionAnalysis() {
   const { ingredients } = useIngredients();
   const [selectedIngredient, setSelectedIngredient] = useState<string | null>(null);
+
+  // 백엔드(Gemini)에서 조회한 식재료별 100g 기준 영양정보. 키 = 식재료 이름.
+  // 내장 nutritionDatabase로 못 잡는 브랜드·가공식품까지 커버한다.
+  const [aiNutrition, setAiNutrition] = useState<
+    Record<string, { calories: number; protein: number; carbs: number; fat: number }>
+  >({});
 
   // ── AI 영양 검색 (capstone-ai /analyze 프록시) ──
   const [searchText, setSearchText] = useState('');
@@ -172,10 +178,53 @@ export default function NutritionAnalysis() {
     runAnalyze(fd);
   };
 
+  // 영양분석 페이지 진입 시, 식재료 이름들로 Gemini 영양정보를 일괄 조회 (페이지당 1회).
+  // 이름 집합이 바뀔 때만 재조회. 실패하면 내장 DB로 그대로 fallback.
+  const namesKey = ingredients.map((i) => i.name).join('|');
+  useEffect(() => {
+    if (ingredients.length === 0) return;
+    const names = [...new Set(ingredients.map((i) => i.name))];
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await apiFetch('/api/ingredients/nutrition', {
+          method: 'POST',
+          body: JSON.stringify({ names }),
+        });
+        if (!res.ok || cancelled) return;
+        const data = await res.json();
+        const map: Record<string, { calories: number; protein: number; carbs: number; fat: number }> = {};
+        for (const it of (data?.items ?? [])) {
+          if (it?.name) {
+            map[it.name] = {
+              calories: Number(it.calories) || 0,
+              protein: Number(it.protein) || 0,
+              carbs: Number(it.carbs) || 0,
+              fat: Number(it.fat) || 0,
+            };
+          }
+        }
+        if (!cancelled) setAiNutrition(map);
+      } catch {
+        // 조회 실패 — 내장 nutritionDatabase로 fallback. 페이지는 그대로 동작.
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [namesKey]);
+
+  // 식재료 영양정보 결정: AI 조회값 우선 → 내장 DB → 기본값.
+  // AI값은 4대 영양소만 덮어쓰고, 내장 DB의 식이섬유·나트륨·비타민은 있으면 유지.
+  const getNutrition = (name: string) => {
+    const local = nutritionDatabase[name] || nutritionDatabase['default'];
+    const ai = aiNutrition[name];
+    return ai ? { ...local, ...ai } : local;
+  };
+
   // 전체 영양 통계 — nutritionDatabase가 100g 기준. 식재료 수량 단위가 개/팩/g 등
   // 제각각이라 g 환산이 불가능 → 100g 기준 표준값을 그대로 합산 (식재료 페이지와 동일 정책)
   const totalNutrition = ingredients.reduce((acc, ing) => {
-    const nutrition = nutritionDatabase[ing.name] || nutritionDatabase['default'];
+    const nutrition = getNutrition(ing.name);
     return {
       calories: acc.calories + nutrition.calories,
       protein: acc.protein + nutrition.protein,
@@ -200,7 +249,7 @@ export default function NutritionAnalysis() {
   // 식재료별 칼로리 비교 (상위 8개) — 100g 기준 값 그대로 사용
   const ingredientCalories = ingredients
     .map(ing => {
-      const nutrition = nutritionDatabase[ing.name] || nutritionDatabase['default'];
+      const nutrition = getNutrition(ing.name);
       return {
         name: ing.name,
         calories: nutrition.calories,
@@ -352,7 +401,7 @@ export default function NutritionAnalysis() {
             <h3 className="font-semibold mb-3">식재료별 영양 성분</h3>
             <div className="space-y-2">
               {ingredients.map((ing) => {
-                const nutrition = nutritionDatabase[ing.name] || nutritionDatabase['default'];
+                const nutrition = getNutrition(ing.name);
                 const isAllergic = allergies.some((allergy: string) =>
                   ing.name.toLowerCase().includes(allergy)
                 );
