@@ -172,16 +172,15 @@ export default function NutritionAnalysis() {
     runAnalyze(fd);
   };
 
-  // 전체 영양 통계
+  // 전체 영양 통계 — nutritionDatabase가 100g 기준. 식재료 수량 단위가 개/팩/g 등
+  // 제각각이라 g 환산이 불가능 → 100g 기준 표준값을 그대로 합산 (식재료 페이지와 동일 정책)
   const totalNutrition = ingredients.reduce((acc, ing) => {
     const nutrition = nutritionDatabase[ing.name] || nutritionDatabase['default'];
-    const factor = ing.quantity / 100; // 100g 기준으로 계산
-
     return {
-      calories: acc.calories + (nutrition.calories * factor),
-      protein: acc.protein + (nutrition.protein * factor),
-      carbs: acc.carbs + (nutrition.carbs * factor),
-      fat: acc.fat + (nutrition.fat * factor),
+      calories: acc.calories + nutrition.calories,
+      protein: acc.protein + nutrition.protein,
+      carbs: acc.carbs + nutrition.carbs,
+      fat: acc.fat + nutrition.fat,
     };
   }, { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
@@ -198,17 +197,16 @@ export default function NutritionAnalysis() {
     { name: '지방', value: totalNutrition.fat, color: '#FFD93D' },
   ];
 
-  // 식재료별 칼로리 비교 (상위 8개)
+  // 식재료별 칼로리 비교 (상위 8개) — 100g 기준 값 그대로 사용
   const ingredientCalories = ingredients
     .map(ing => {
       const nutrition = nutritionDatabase[ing.name] || nutritionDatabase['default'];
-      const factor = ing.quantity / 100;
       return {
         name: ing.name,
-        calories: Math.round(nutrition.calories * factor),
-        protein: Math.round(nutrition.protein * factor),
-        carbs: Math.round(nutrition.carbs * factor),
-        fat: Math.round(nutrition.fat * factor),
+        calories: nutrition.calories,
+        protein: nutrition.protein,
+        carbs: nutrition.carbs,
+        fat: nutrition.fat,
       };
     })
     .sort((a, b) => b.calories - a.calories)
@@ -311,15 +309,39 @@ export default function NutritionAnalysis() {
 
           {/* 식재료별 칼로리 비교 */}
           <div className="px-5 pb-5">
-            <h3 className="font-semibold mb-3">식재료별 칼로리</h3>
+            <h3 className="font-semibold mb-3">
+              식재료별 칼로리 <span className="text-xs font-normal text-muted-foreground">(100g 기준)</span>
+            </h3>
             <div className="bg-card border border-border rounded-2xl p-5">
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={ingredientCalories}>
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={ingredientCalories} margin={{ top: 4, right: 8, left: -8, bottom: 40 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  {/* 긴 식재료 이름이 x축에서 잘리지 않도록 회전 + 말줄임 (전체 이름은 툴팁에 표시) */}
+                  <XAxis
+                    dataKey="name"
+                    interval={0}
+                    height={64}
+                    tick={(props: any) => {
+                      const v = String(props.payload?.value ?? '');
+                      const label = v.length > 7 ? v.slice(0, 7) + '…' : v;
+                      return (
+                        <text
+                          x={props.x}
+                          y={props.y}
+                          dy={4}
+                          textAnchor="end"
+                          fontSize={11}
+                          fill="var(--muted-foreground)"
+                          transform={`rotate(-40, ${props.x}, ${props.y})`}
+                        >
+                          {label}
+                        </text>
+                      );
+                    }}
+                  />
                   <YAxis tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Bar dataKey="calories" fill="var(--accent)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="calories" name="칼로리" fill="var(--accent)" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -331,7 +353,6 @@ export default function NutritionAnalysis() {
             <div className="space-y-2">
               {ingredients.map((ing) => {
                 const nutrition = nutritionDatabase[ing.name] || nutritionDatabase['default'];
-                const factor = ing.quantity / 100;
                 const isAllergic = allergies.some((allergy: string) =>
                   ing.name.toLowerCase().includes(allergy)
                 );
@@ -357,7 +378,7 @@ export default function NutritionAnalysis() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {ing.quantity}{ing.unit} 기준
+                          100g 기준 · 보유 {ing.quantity}{ing.unit}
                         </p>
                       </div>
                     </div>
@@ -366,28 +387,28 @@ export default function NutritionAnalysis() {
                       <div className="bg-card border border-border rounded-lg p-2 text-center">
                         <p className="text-xs text-muted-foreground">칼로리</p>
                         <p className="font-bold text-sm mt-1">
-                          {Math.round(nutrition.calories * factor)}
+                          {Math.round(nutrition.calories)}
                         </p>
                         <p className="text-xs text-muted-foreground">kcal</p>
                       </div>
                       <div className="bg-card border border-border rounded-lg p-2 text-center">
                         <p className="text-xs text-muted-foreground">단백질</p>
                         <p className="font-bold text-sm mt-1">
-                          {Math.round(nutrition.protein * factor)}
+                          {Math.round(nutrition.protein)}
                         </p>
                         <p className="text-xs text-muted-foreground">g</p>
                       </div>
                       <div className="bg-card border border-border rounded-lg p-2 text-center">
                         <p className="text-xs text-muted-foreground">탄수화물</p>
                         <p className="font-bold text-sm mt-1">
-                          {Math.round(nutrition.carbs * factor)}
+                          {Math.round(nutrition.carbs)}
                         </p>
                         <p className="text-xs text-muted-foreground">g</p>
                       </div>
                       <div className="bg-card border border-border rounded-lg p-2 text-center">
                         <p className="text-xs text-muted-foreground">지방</p>
                         <p className="font-bold text-sm mt-1">
-                          {Math.round(nutrition.fat * factor)}
+                          {Math.round(nutrition.fat)}
                         </p>
                         <p className="text-xs text-muted-foreground">g</p>
                       </div>
@@ -399,12 +420,12 @@ export default function NutritionAnalysis() {
                         <div className="flex flex-wrap gap-2">
                           {nutrition.fiber && (
                             <span className="px-2 py-1 bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 rounded-lg text-xs">
-                              식이섬유 {Math.round(nutrition.fiber * factor)}g
+                              식이섬유 {Math.round(nutrition.fiber)}g
                             </span>
                           )}
                           {nutrition.sodium && (
                             <span className="px-2 py-1 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded-lg text-xs">
-                              나트륨 {Math.round(nutrition.sodium * factor)}mg
+                              나트륨 {Math.round(nutrition.sodium)}mg
                             </span>
                           )}
                           {nutrition.vitamins?.map((vitamin) => (
