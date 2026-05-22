@@ -45,8 +45,6 @@ export default function Recipes() {
     ? matches.filter((m) => m.recipe.favorite)
     : matches;
 
-  const makeableCount = matches.filter((m) => m.hasIngredients.length > 0).length;
-
   // 검색 + 페이지네이션 — 레시피가 많아 한 화면에 다 보기 어려우므로 8개씩 끊어서 보여준다.
   const PAGE_SIZE = 8;
   const [query, setQuery] = useState('');
@@ -75,6 +73,15 @@ export default function Recipes() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // 탭별 개수 — 검색 중이면 검색 결과 수를 보여준다.
+  const tabLabel =
+    filterMode === 'all' ? '전체 레시피'
+    : filterMode === 'makeable' ? '보유 식재료로 만들 수 있는 요리'
+    : '즐겨찾기';
+  const countText = query.trim()
+    ? `검색 결과 ${searched.length}개`
+    : `${tabLabel} ${filteredMatches.length}개`;
+
   if (isGuest()) return <GuestBlocked feature="맞춤 레시피" />;
 
   if (loading) {
@@ -97,9 +104,6 @@ export default function Recipes() {
             레시피 추천
           </h1>
         </div>
-        <p className="text-sm text-muted-foreground ml-10">
-          보유 식재료로 만들 수 있는 요리 {makeableCount}개
-        </p>
       </div>
 
       {/* 필터 + AI 추천 버튼 — 2×2 그리드로 균등 배치 */}
@@ -133,8 +137,9 @@ export default function Recipes() {
         </div>
       </div>
 
-      {/* 레시피 이름 검색 */}
+      {/* 탭별 개수 + 레시피 이름 검색 */}
       <div className="px-5 pb-4">
+        <p className="text-sm text-muted-foreground mb-2">{countText}</p>
         <div className="relative">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
