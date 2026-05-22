@@ -62,6 +62,13 @@ export default function Recipes() {
   const safePage = Math.min(page, totalPages);
   const pageItems = searched.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
+  // 페이지 번호 버튼은 한 줄을 넘지 않도록 현재 페이지 주변 최대 5개만 노출 (양옆은 ‹ › 화살표)
+  const PAGE_WINDOW = 5;
+  const winStart = Math.max(1, Math.min(safePage - 2, totalPages - PAGE_WINDOW + 1));
+  const winEnd = Math.min(totalPages, winStart + PAGE_WINDOW - 1);
+  const pageNumbers: number[] = [];
+  for (let p = winStart; p <= winEnd; p++) pageNumbers.push(p);
+
   const goToPage = (p: number) => {
     setPage(p);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -326,7 +333,7 @@ export default function Recipes() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              {pageNumbers.map((p) => (
                 <button
                   key={p}
                   type="button"
