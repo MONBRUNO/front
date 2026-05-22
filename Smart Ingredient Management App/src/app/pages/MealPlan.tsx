@@ -31,55 +31,41 @@ export default function MealPlan() {
     [recipes, ingredients]
   );
 
-  // 자동 식단 생성
+  // 자동 식단 생성 — 끼니별 후보 풀에서 요일마다 다른 메뉴를 순환 선택해 중복을 최소화.
   const mealPlan = useMemo(() => {
+    if (recipes.length === 0) return [];
+
+    // 매칭률 높은 순 정렬 — 만들기 쉬운 레시피가 앞쪽에 오게.
+    const sorted = [...matches].sort((a, b) => b.matchRate - a.matchRate);
+    const allRecipes = sorted.map((m) => m.recipe);
+    const inCats = (cats: string[]) =>
+      sorted.filter((m) => cats.includes(m.recipe.category)).map((m) => m.recipe);
+
+    // 아침: 간식·음료(가벼운 끼니). 후보가 너무 적으면 전체로 폴백.
+    let breakfastPool = inCats(['간식', '음료']);
+    if (breakfastPool.length < 2) breakfastPool = allRecipes;
+    // 점심·저녁: 밥/면·반찬·기타·샐러드(제대로 된 끼니).
+    let mealPool = inCats(['밥/면', '반찬', '기타', '샐러드']);
+    if (mealPool.length < 4) mealPool = allRecipes;
+
     const plan: MealPlanItem[] = [];
-    const makeableRecipes = matches.filter((m) => m.matchRate >= 50);
-    
     for (let i = 0; i < selectedDays; i++) {
-      if (recipes.length === 0) {
-        break;
-      }
-
-      // 각 끼니별로 다양하게 선택
-      const breakfast = makeableRecipes.find((m) => 
-        m.recipe.category === '간식' || m.recipe.category === '음료'
-      )?.recipe || recipes[0];
-      
-      const lunch = makeableRecipes.find((m) => 
-        m.recipe.category === '밥/면' || m.recipe.category === '반찬'
-      )?.recipe || recipes[1];
-      
-      const dinner = makeableRecipes[(i * 2) % makeableRecipes.length]?.recipe || recipes[2];
-
-      const totalCalories = breakfast.nutrition.calories + 
-        lunch.nutrition.calories + 
-        dinner.nutrition.calories;
-      
-      const totalProtein = breakfast.nutrition.protein + 
-        lunch.nutrition.protein + 
-        dinner.nutrition.protein;
-
-      const totalCarbs = breakfast.nutrition.carbs + 
-        lunch.nutrition.carbs + 
-        dinner.nutrition.carbs;
-
-      const totalFat = breakfast.nutrition.fat + 
-        lunch.nutrition.fat + 
-        dinner.nutrition.fat;
+      const breakfast = breakfastPool[i % breakfastPool.length];
+      // 점심·저녁은 서로 다른 인덱스 — 같은 날 중복 방지 + 요일별 순환
+      const lunch = mealPool[(i * 2) % mealPool.length];
+      const dinner = mealPool[(i * 2 + 1) % mealPool.length];
 
       plan.push({
         day: daysOfWeek[i % 7],
         breakfast: breakfast.name,
         lunch: lunch.name,
         dinner: dinner.name,
-        totalCalories,
-        totalProtein,
-        totalCarbs,
-        totalFat,
+        totalCalories: breakfast.nutrition.calories + lunch.nutrition.calories + dinner.nutrition.calories,
+        totalProtein: breakfast.nutrition.protein + lunch.nutrition.protein + dinner.nutrition.protein,
+        totalCarbs: breakfast.nutrition.carbs + lunch.nutrition.carbs + dinner.nutrition.carbs,
+        totalFat: breakfast.nutrition.fat + lunch.nutrition.fat + dinner.nutrition.fat,
       });
     }
-
     return plan;
   }, [matches, recipes, selectedDays]);
 
