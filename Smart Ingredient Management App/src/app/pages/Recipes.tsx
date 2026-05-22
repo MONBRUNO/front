@@ -3,7 +3,7 @@ import { useIngredients } from '../hooks/useIngredients';
 import { useRecipes } from '../hooks/useRecipes';
 import { matchRecipesWithIngredients, getDifficultyLabel } from '../utils/recipeMatch';
 import { Link, useNavigate } from 'react-router';
-import { ChefHat, Clock, Users, ArrowLeft, Sparkles, Heart, ChevronRight, X } from 'lucide-react';
+import { ChefHat, Clock, Users, ArrowLeft, Sparkles, Heart, ChevronRight, ChevronLeft, X, Search } from 'lucide-react';
 import { isGuest } from '../utils/guestMode';
 import GuestBlocked from '../components/GuestBlocked';
 import {
@@ -46,6 +46,26 @@ export default function Recipes() {
     : matches;
 
   const makeableCount = matches.filter((m) => m.hasIngredients.length > 0).length;
+
+  // 검색 + 페이지네이션 — 레시피가 많아 한 화면에 다 보기 어려우므로 8개씩 끊어서 보여준다.
+  const PAGE_SIZE = 8;
+  const [query, setQuery] = useState('');
+  const [page, setPage] = useState(1);
+  // 탭 전환·검색어 변경 시 1페이지로 리셋
+  useEffect(() => { setPage(1); }, [filterMode, query]);
+
+  const searched = query.trim()
+    ? filteredMatches.filter((m) =>
+        m.recipe.name.toLowerCase().includes(query.trim().toLowerCase()))
+    : filteredMatches;
+  const totalPages = Math.max(1, Math.ceil(searched.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = searched.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const goToPage = (p: number) => {
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (isGuest()) return <GuestBlocked feature="맞춤 레시피" />;
 
@@ -102,6 +122,30 @@ export default function Recipes() {
             <Sparkles className="w-3.5 h-3.5" />
             AI 추천
           </button>
+        </div>
+      </div>
+
+      {/* 레시피 이름 검색 */}
+      <div className="px-5 pb-4">
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="레시피 이름 검색"
+            className="w-full pl-9 pr-9 py-2 bg-card border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              aria-label="검색어 지우기"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -162,21 +206,24 @@ export default function Recipes() {
 
       {/* 레시피 목록 */}
       <div className="px-5">
-        {filteredMatches.length === 0 ? (
+        {searched.length === 0 ? (
           <div className="text-center py-12">
             <ChefHat className="w-12 h-12 text-muted-foreground opacity-50 mx-auto mb-3" />
             <p className="text-muted-foreground">
-              {filterMode === 'makeable' ? '현재 만들 수 있는 요리가 없습니다' : '레시피가 없습니다'}
+              {query.trim()
+                ? '검색 결과가 없습니다'
+                : filterMode === 'makeable' ? '현재 만들 수 있는 요리가 없습니다' : '레시피가 없습니다'}
             </p>
-            {filterMode === 'makeable' && (
+            {filterMode === 'makeable' && !query.trim() && (
               <p className="text-xs text-muted-foreground mt-1">
                 식재료를 추가하면 더 많은 레시피를 만들 수 있어요
               </p>
             )}
           </div>
         ) : (
+          <>
           <div className="space-y-3">
-            {filteredMatches.map((match) => (
+            {pageItems.map((match) => (
               <Link key={match.recipe.id} to={`/recipe/${match.recipe.id}`}>
                 <div className="bg-card border border-border rounded-xl p-4 hover:bg-secondary transition-colors">
                   <div className="flex items-start justify-between mb-3 gap-2">
@@ -268,6 +315,45 @@ export default function Recipes() {
               </Link>
             ))}
           </div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-1.5 mt-5 flex-wrap">
+              <button
+                type="button"
+                disabled={safePage === 1}
+                onClick={() => goToPage(safePage - 1)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-border disabled:opacity-30"
+                aria-label="이전 페이지"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => goToPage(p)}
+                  className="w-8 h-8 flex items-center justify-center rounded-lg text-sm border"
+                  style={{
+                    backgroundColor: p === safePage ? 'var(--accent)' : undefined,
+                    color: p === safePage ? '#1A3300' : undefined,
+                    fontWeight: p === safePage ? 700 : 500,
+                    borderColor: p === safePage ? 'var(--accent)' : 'var(--border)',
+                  }}
+                >
+                  {p}
+                </button>
+              ))}
+              <button
+                type="button"
+                disabled={safePage === totalPages}
+                onClick={() => goToPage(safePage + 1)}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-border disabled:opacity-30"
+                aria-label="다음 페이지"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          </>
         )}
       </div>
     </div>
