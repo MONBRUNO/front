@@ -49,49 +49,60 @@ npm run dev    # 개발 서버 시작 (http://localhost:5173)
 
 ---
 
-## 작업 이력
+## 주요 작업
 
-### 2026-05-22
+### 배포 / 인프라
 
-#### 배포 (Vercel)
+#### Vercel 배포 (2026-05-22)
 - `API_BASE_URL`을 `VITE_API_BASE_URL` 환경변수로 분리 — 로컬/배포 백엔드 URL 전환 (`apiClient.ts`)
 - `vercel.json` — SPA fallback rewrite 추가 (OAuth 콜백 등 클라이언트 라우트 새로고침 시 404 방지)
 
-#### 로그인 화면
+#### 에러 모니터링 — Sentry (2026-05-26)
+- `@sentry/react` 추가, `main.tsx`에서 `Sentry.init` — **PROD 빌드 + `VITE_SENTRY_DSN` 환경변수가 있을 때만** 활성화. 로컬 dev에선 자동 off
+- 보수적 기본값: `tracesSampleRate: 0` (성능 트레이스 끔. 무료 한도 5K events/월 보호용 — 에러만 캡쳐)
+- DSN은 Vercel 환경변수 `VITE_SENTRY_DSN`으로 주입 — 코드·저장소에 노출되지 않음
+
+### 인증 / 로그인
+
+#### 로그인 화면 (2026-05-22)
 - 한 페이지에 들어오도록 마진 축소
 - 소셜 로그인 버튼(카카오·네이버·구글) 높이 통일, 카카오 로고는 크게 유지
 
-#### 영양 분석 페이지 (`NutritionAnalysis.tsx`)
+### 식재료 관리
+
+#### 카테고리 필터 UI 개선 (`Ingredients.tsx`) (2026-05-14)
+- 기존 가로 스크롤 버튼 방식 → **드롭다운 select** 로 교체
+- 카테고리·보관 방법·정렬 3개 select를 한 줄에 나란히 배치 (모바일 친화적)
+- 이모지 추가로 시각적 구분 개선 (🥦 채소, 🥩 육류, ❄️ 냉장 등)
+
+### 영양 분석 (`NutritionAnalysis.tsx`) (2026-05-22)
 - **칼로리 버그 수정** — `factor = quantity/100`을 곱하던 것 제거. `quantity` 단위가 개/팩 등이라(예: 튀김우동 2개) 100으로 나누면 `150×0.02=3kcal` 같은 엉터리 값이 나왔음. 식재료 페이지와 동일하게 100g 기준 값 그대로 표시
 - **식재료별 칼로리 정확도** — 내장 `nutritionDatabase`(기본 23종)로 못 잡는 브랜드·가공식품을 위해, 페이지 진입 시 `POST /api/ingredients/nutrition`(백엔드 Gemini 조회)으로 영양정보를 일괄 조회. 조회 실패 시 내장 DB로 fallback
 - 차트 x축 긴 식재료 이름 회전 + 말줄임 처리 (전체 이름은 툴팁에 표시)
 
-#### 레시피 추천 페이지 (`Recipes.tsx`)
-- 레시피 이름 **검색** + **8개씩 페이지네이션** (게시판식 5개 블록 — `[1-5]` `[6-10]`, ‹ ›로 블록 이동)
-- 제목 아래 안내문구 제거 → 각 탭(전체/만들수있는/즐겨찾기)별 개수를 검색창 위에 표시
+### 레시피 추천 (`Recipes.tsx`)
 
-#### 식단 추천 페이지 (`MealPlan.tsx`)
-- 끼니 메뉴가 매일 반복되던 버그 수정 (아침·점심을 `.find()`로 첫 레시피만 고정 선택하던 것)
-- **AI 식단 연동** — `POST /api/recipes/meal-plan`(백엔드 Gemini)으로 끼니 적합성·다양성을 고려한 식단을 받아 표시. 응답 전/실패 시엔 규칙 기반 순환으로 fallback
-
-### 2026-05-14
-
-#### MSW 모킹 환경 구축
-- `msw` 패키지 설치 및 `public/mockServiceWorker.js` 초기화
-- `src/mocks/handlers/authHandlers.ts` — 로그인·로그아웃·토큰 재발급·프로필 API 모킹
-- `src/mocks/handlers/index.ts` — 핸들러 통합 진입점 (추후 도메인 핸들러 추가 위치)
-- `src/mocks/browser.ts` — 브라우저 Service Worker 등록
-- `src/main.tsx` — 개발 환경에서만 MSW 활성화 (`import.meta.env.DEV` 조건부 동적 import)
-- `src/app/pages/Login.tsx` — MSW 관련 TODO 주석 추가 (백엔드 연동 후 삭제 가이드 포함)
-
-#### 레시피 페이지 — AI 추천 기능 추가 (`Recipes.tsx`)
+#### AI 추천 모달 (2026-05-14)
 - "전체 레시피 / 만들 수 있는 요리" 필터 버튼 오른쪽에 **✨ AI 추천** 버튼 추가
 - AI 추천 모달 (바텀 시트 스타일, 2단계):
   - **Step 1** — 현재 등록된 식재료 다중 선택 (그리드 레이아웃, 중복 선택 가능)
   - **Step 2** — 요리 스타일 선택 (한식·중식·일식·양식 등 10가지, 다중 선택)
   - 완료 시 `POST /recipe/ai-recommend` 로 데이터 전송 (백엔드 연동 후 실제 응답 처리 필요)
 
-#### 식재료 페이지 — 카테고리 필터 UI 개선 (`Ingredients.tsx`)
-- 기존 가로 스크롤 버튼 방식 → **드롭다운 select** 로 교체
-- 카테고리·보관 방법·정렬 3개 select를 한 줄에 나란히 배치 (모바일 친화적)
-- 이모지 추가로 시각적 구분 개선 (🥦 채소, 🥩 육류, ❄️ 냉장 등)
+#### 검색 + 페이지네이션 (2026-05-22)
+- 레시피 이름 **검색** + **8개씩 페이지네이션** (게시판식 5개 블록 — `[1-5]` `[6-10]`, ‹ ›로 블록 이동)
+- 제목 아래 안내문구 제거 → 각 탭(전체/만들수있는/즐겨찾기)별 개수를 검색창 위에 표시
+
+### 식단 추천 (`MealPlan.tsx`) (2026-05-22)
+- 끼니 메뉴가 매일 반복되던 버그 수정 (아침·점심을 `.find()`로 첫 레시피만 고정 선택하던 것)
+- **AI 식단 연동** — `POST /api/recipes/meal-plan`(백엔드 Gemini)으로 끼니 적합성·다양성을 고려한 식단을 받아 표시. 응답 전/실패 시엔 규칙 기반 순환으로 fallback
+
+### 개발 도구
+
+#### MSW 모킹 환경 구축 (2026-05-14)
+- `msw` 패키지 설치 및 `public/mockServiceWorker.js` 초기화
+- `src/mocks/handlers/authHandlers.ts` — 로그인·로그아웃·토큰 재발급·프로필 API 모킹
+- `src/mocks/handlers/index.ts` — 핸들러 통합 진입점 (추후 도메인 핸들러 추가 위치)
+- `src/mocks/browser.ts` — 브라우저 Service Worker 등록
+- `src/main.tsx` — 개발 환경에서만 MSW 활성화 (`import.meta.env.DEV` 조건부 동적 import)
+- `src/app/pages/Login.tsx` — MSW 관련 TODO 주석 추가 (백엔드 연동 후 삭제 가이드 포함)
