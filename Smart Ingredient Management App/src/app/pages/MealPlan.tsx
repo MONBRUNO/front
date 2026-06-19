@@ -348,22 +348,14 @@ export default function MealPlan() {
               </div>
 
               <div className="space-y-2">
-                <MealRow label="아침" meal={day.breakfast} />
-                <MealRow label="점심" meal={day.lunch} />
-                <MealRow label="저녁" meal={day.dinner} />
+                <MealRow label="아침" meal={day.breakfast} recipeId={recipeByName[day.breakfast]?.id} />
+                <MealRow label="점심" meal={day.lunch} recipeId={recipeByName[day.lunch]?.id} />
+                <MealRow label="저녁" meal={day.dinner} recipeId={recipeByName[day.dinner]?.id} />
               </div>
 
               <div className="mt-3 pt-3 border-t border-border">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>단백질 {Math.round(day.totalProtein)}g</span>
-                  <Link
-                    to="/recipes"
-                    className="flex items-center gap-1 text-black"
-                    style={{ fontWeight: 600 }}
-                  >
-                    <span>레시피 보기</span>
-                    <ChevronRight className="w-3 h-3" />
-                  </Link>
+                <div className="text-xs text-muted-foreground">
+                  단백질 {Math.round(day.totalProtein)}g
                 </div>
               </div>
             </div>
@@ -386,13 +378,22 @@ export default function MealPlan() {
   );
 }
 
-function MealRow({ label, meal }: { label: string; meal: string }) {
-  return (
+function MealRow({ label, meal, recipeId }: { label: string; meal: string; recipeId?: string }) {
+  const content = (
     <div className="flex items-center justify-between py-2">
       <span className="text-sm text-muted-foreground w-12">{label}</span>
       <span className="text-sm flex-1" style={{ fontWeight: 500 }}>
         {meal}
       </span>
+      {recipeId && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
     </div>
   );
+  if (recipeId) {
+    return (
+      <Link to={`/recipe/${recipeId}`} className="block hover:bg-accent/30 -mx-1 px-1 rounded">
+        {content}
+      </Link>
+    );
+  }
+  return content;
 }

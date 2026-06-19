@@ -270,8 +270,8 @@ export default function AiRecommend() {
               </div>
             )}
           </div>
-          {/* 다음 버튼 — mt-auto로 페이지 하단(BottomNav 바로 위)으로 밀어 고정 */}
-          <div className="mt-auto bg-background border-t border-border px-5 py-3">
+          {/* 다음 버튼 — sticky로 스크롤해도 BottomNav 바로 위에 항상 노출 */}
+          <div className="sticky bottom-16 z-10 bg-background border-t border-border px-5 py-3">
             <button
               onClick={() => setStep(2)}
               disabled={selectedIngredients.length === 0}
@@ -332,8 +332,8 @@ export default function AiRecommend() {
               })}
             </div>
           </div>
-          {/* 액션 영역 — mt-auto로 페이지 하단(BottomNav 바로 위)으로 밀어 고정 */}
-          <div className="mt-auto bg-background border-t border-border px-5 py-3 space-y-2">
+          {/* 액션 영역 — sticky로 스크롤해도 BottomNav 바로 위에 항상 노출 */}
+          <div className="sticky bottom-16 z-10 bg-background border-t border-border px-5 py-3 space-y-2">
             <p className="text-xs text-amber-600 dark:text-amber-400 text-center">
               ⏱️ AI 분석은 <strong>1~3분</strong> 정도 걸려요. 잠시만 기다려주세요.
             </p>

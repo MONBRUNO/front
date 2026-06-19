@@ -120,10 +120,10 @@ export default function Recipes() {
             즐겨찾기
           </FilterButton>
 
-          {/* AI 추천 — 새 페이지로 이동 */}
+          {/* AI 추천 — 새 페이지로 이동. 다크모드 가독성은 ai-btn-recommend 클래스로 별도 처리. */}
           <button
             onClick={() => navigate('/ai-recommend')}
-            className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all active:scale-95"
+            className="ai-btn-recommend w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-all active:scale-95"
             style={{
               background: 'linear-gradient(135deg, var(--accent) 0%, var(--accent-deep) 100%)',
               fontWeight: 700,
